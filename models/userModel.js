@@ -1,64 +1,6 @@
 
 import mongoose from "mongoose";
 
-const orderItemSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
-    required: true
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  size: String,
-  priceAtPurchase: Number
-});
-
-const orderSchema = new mongoose.Schema({
-  orderId: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  date: {
-    type: Date,
-    default: Date.now
-  },
-  status: {
-    type: String,
-    enum: ["Pending", "Shipped", "Delivered", "Cancelled"],
-    default: "Pending"
-  },
-  items: [orderItemSchema],
-  totalPrice: {
-    type: Number,
-    required: true
-  },
-  address: { 
-    type: String,
-    required: true
-  },
-  paymentMethod: {
-    type: String,
-    required: true
-  }
-});
-
-const cartItemSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
-    required: true
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  size: String
-});
 
 const userSchema = new mongoose.Schema(
   {
@@ -67,12 +9,11 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    email: {
+    phoneNumber: {
       type: String,
       required: true,
       unique: true,
-      trim: true,
-      lowercase: true
+      trim: true
     },
     password: {
       type: String,
@@ -88,15 +29,26 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
-    cart: [cartItemSchema],
-    wishlist: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product"
+    cart: [{
+      productId: {
+        type : String,
+        required: true,
+
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        min: 1
+      },
+      size: {
+        type: String,
+        required: true
       }
-    ],
-    orders: [orderSchema],
-    phoneNumber: String
+    }],
+
+    wishlist: [Object],
+    
+    orderID:{type:String, default:""},
   },
   {
     timestamps: true

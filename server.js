@@ -6,10 +6,14 @@ import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import promoRoutes from "./routes/promoRoutes.js";
 import adminRoutes from "./routes/AdminRoutes.js"; 
+import cors from "cors";
 
 dotenv.config();
 const app = express();
+
 app.use(express.json());
+app.use(cors({   origin: '*',
+  credentials: true })); 
 
 connectDB();
 

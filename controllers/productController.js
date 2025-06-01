@@ -73,13 +73,22 @@ const getProductBySlug = async (req, res) => {
   }
 };
 
-
-
-
 const getProductsByCategory = async (req, res) => {
   try {
     const products = await Product.find({ category: req.params.category });
     res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getProductByCode = async (req, res) => {
+  try {
+    const product = await Product.findOne({ productCode: req.params.code });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -90,4 +99,5 @@ export {
   getProductBySlug,
   getProductById,
   getProductsByCategory,
+  getProductByCode,
 };

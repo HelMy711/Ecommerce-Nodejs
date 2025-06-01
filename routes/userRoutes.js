@@ -10,13 +10,13 @@ import {
   addToWishlist,
   removeFromWishlist,
   getUserOrders,
-  getOrderById
+  createOrder,
+  updateOrderStatus
 } from '../controllers/userController.js';
 import { authMiddleware } from '../middlewares/authmiddleware.js';
 
 const router = express.Router();
 
-// Public routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 
@@ -40,9 +40,10 @@ router.route('/wishlist/:productId')
   .delete(removeFromWishlist);
 
 router.route('/orders')
-  .get(getUserOrders);
+  .get(getUserOrders)
+  .post(createOrder);
 
 router.route('/orders/:orderId')
-  .get(getOrderById);
+  .put(updateOrderStatus);
 
 export default router;

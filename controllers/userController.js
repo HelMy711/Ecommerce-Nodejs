@@ -1,5 +1,6 @@
 import User from '../models/userModel.js';
 import Product from '../models/productModel.js';
+import Order from '../models/orderModel.js';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -14,13 +15,13 @@ const generateToken = (id) => {
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phoneNumber, address } = req.body;
+    const { name, password, phoneNumber, address } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !password || !phoneNumber) {
       return res.status(400).json({ message: 'Please include all required fields' });
     }
 
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ phoneNumber });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -30,7 +31,6 @@ const registerUser = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
       password: hashedPassword,
       phoneNumber,
       address,
@@ -43,7 +43,6 @@ const registerUser = async (req, res) => {
       res.status(201).json({
         _id: user._id,
         name: user.name,
-        email: user.email,
         phoneNumber: user.phoneNumber,
         address: user.address,
         role: user.role,
@@ -57,18 +56,16 @@ const registerUser = async (req, res) => {
   }
 };
 
-
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phoneNumber, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ phoneNumber });
 
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
         _id: user._id,
         name: user.name,
-        email: user.email,
         phoneNumber: user.phoneNumber,
         address: user.address,
         role: user.role,
@@ -77,16 +74,13 @@ const loginUser = async (req, res) => {
         token: generateToken(user._id)
       });
     } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+      res.status(401).json({ message: 'Invalid phone number or password' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
 const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
@@ -96,12 +90,9 @@ const getUserProfile = async (req, res) => {
     }
 
     res.json({
-      _id: user._id,
       name: user.name,
-      email: user.email,
       phoneNumber: user.phoneNumber,
       address: user.address,
-      role: user.role,
       cart: user.cart,
       wishlist: user.wishlist,
       orders: user.orders
@@ -120,7 +111,6 @@ const updateUserProfile = async (req, res) => {
     }
 
     user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
     user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
     user.address = req.body.address || user.address;
 
@@ -132,12 +122,9 @@ const updateUserProfile = async (req, res) => {
     const updatedUser = await user.save();
 
     res.json({
-      _id: updatedUser._id,
       name: updatedUser.name,
-      email: updatedUser.email,
       phoneNumber: updatedUser.phoneNumber,
       address: updatedUser.address,
-      role: updatedUser.role,
       token: generateToken(updatedUser._id)
     });
   } catch (error) {
@@ -145,16 +132,11 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-
 const addToCart = async (req, res) => {
   try {
     const { productId, quantity, size } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ message: 'Invalid product ID' });
-    }
-
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ productCode: productId });
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -167,14 +149,14 @@ const addToCart = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     const itemIndex = user.cart.findIndex(
-      item => item.productId.toString() === productId && item.size === size
+      item => item.productId === productId && item.size === size
     );
 
     if (itemIndex > -1) {
       user.cart[itemIndex].quantity += quantity || 1;
     } else {
       user.cart.push({
-        productId,
+        productId, 
         quantity: quantity || 1,
         size
       });
@@ -204,7 +186,6 @@ const removeFromCart = async (req, res) => {
   }
 };
 
-
 const updateCartItem = async (req, res) => {
   try {
     const { quantity } = req.body;
@@ -230,22 +211,21 @@ const addToWishlist = async (req, res) => {
   try {
     const { productId } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ message: 'Invalid product ID' });
-    }
-
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ productCode: productId });
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
     const user = await User.findById(req.user._id);
 
-    if (user.wishlist.includes(productId)) {
+    const exists = user.wishlist.some(
+      item => item.productId === productId
+    );
+    if (exists) {
       return res.status(400).json({ message: 'Product already in wishlist' });
     }
 
-    user.wishlist.push(productId);
+    user.wishlist.push({ productId }); 
     await user.save();
 
     res.status(201).json(user.wishlist);
@@ -254,13 +234,12 @@ const addToWishlist = async (req, res) => {
   }
 };
 
-
 const removeFromWishlist = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
 
     user.wishlist = user.wishlist.filter(
-      id => id.toString() !== req.params.productId
+      item => item.productId !== req.params.productId
     );
 
     await user.save();
@@ -281,23 +260,93 @@ const getUserOrders = async (req, res) => {
   }
 };
 
-// @desc    Get specific order details
-// @route   GET /api/users/orders/:orderId
-// @access  Private
-const getOrderById = async (req, res) => {
-  try {
-    const user = await User.findOne(
-      { _id: req.user._id, 'orders._id': req.params.orderId },
-      { 'orders.$': 1 }
-    );
 
-    if (!user || !user.orders.length) {
+
+
+const createOrder = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    const { items, totalAmount, promoCode, PromoCodeActive } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Order items are required' });
+    }
+
+    for (const item of items) {
+      if (!item.productId || !item.quantity || !item.size) {
+        return res.status(400).json({ message: 'Each item must have productId, quantity, and size' });
+      }
+    }
+
+    const newOrder = {
+      items,
+      totalAmount,
+      promoCode: promoCode || "",
+      PromoCodeActive: PromoCodeActive || false,
+      status: "pending"
+    };
+
+    user.orders.push(newOrder);
+    user.cart = [];
+    await user.save();
+
+    res.status(201).json(user.orders[user.orders.length - 1]);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateOrderStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    const order = user.orders.id(orderId);
+    if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    res.json(user.orders[0]);
+    if (!["pending", "completed", "cancelled"].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    order.status = status;
+    await user.save();
+
+    res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+const addOrder = async (req, res) => {
+  try {
+    const { userid, items, totalAmount, status, promoCode, PromoCodeActive, address } = req.body;
+
+    // تحقق من وجود المستخدم
+    const user = await User.findById(userid);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // إنشاء الأوردر الجديد
+    const newOrder = new Order({
+      userid,
+      items,
+      totalAmount,
+      status: status || "pending",
+      promoCode,
+      PromoCodeActive,
+      address
+    });
+
+    await newOrder.save();
+
+    res.status(201).json({ message: "Order added successfully!", order: newOrder });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -312,5 +361,7 @@ export {
   addToWishlist,
   removeFromWishlist,
   getUserOrders,
-  getOrderById
+  createOrder,
+  updateOrderStatus,
+  addOrder
 };

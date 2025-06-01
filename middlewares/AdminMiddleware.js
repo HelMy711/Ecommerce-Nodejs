@@ -1,23 +1,31 @@
-import jwt from "jsonwebtoken";
-import User from "../models/userModel.js";
+import jwt from 'jsonwebtoken';
+import User from '../models/userModel.js';
+import authConfig from '../config/auth.js';
 
-export const isAdmin = async (req, res, next) => {
+const isAdmin = async (req, res, next) => {
+  const token = req.header('x-auth-token');
+
+  if (!token) {
+    return res.status(401).json({ message: 'authorization denied' });
+  }
+
   try {
-    const token = req.headers.authorization.split(" ")[1]; 
-    if (!token) {
-      return res.status(401).json({ error: "No token provided" });
+    const decoded = jwt.verify(token, authConfig.secret);
+    
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
     }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); 
-    const user = await User.findById(decoded.userId);
-
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({ error: "Access denied, admin only" });
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied, admin only' });
     }
 
     req.user = user;
     next();
-  } catch (error) {
-    return res.status(500).json({ error: "Internal Server Error" });
+  } catch (err) {
+    res.status(401).json({ message: 'Token is not valid' });
   }
 };
+
+export { isAdmin };
