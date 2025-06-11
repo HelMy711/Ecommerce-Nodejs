@@ -2,16 +2,22 @@ import Product from "../models/productModel.js";
 import User from "../models/userModel.js";
 import PromoCode from "../models/promoModel.js";
 import Order from "../models/orderModel.js"; 
-import { isAdmin } from "../middlewares/AdminMiddleware.js";
 import jwt from 'jsonwebtoken';
 import authConfig from "../config/auth.js";
 export const addProduct = async (req, res) => {
   try {
-    const { name, slug, description, price, category, sizes, images, discount, isAvailable,productCode,reviews } = req.body;
+    const { name, slug, description, price, category, sizes, images, discount, isAvailable, productCode, reviews, brand, team, isFeatured } = req.body;
+
     const newProduct = new Product({
-      name,
+      name: {
+        en: name.en,
+        ar: name.ar
+      },
       slug,
-      description,
+      description: {
+        en: description.en,
+        ar: description.ar
+      },
       price,
       category,
       sizes,
@@ -19,8 +25,10 @@ export const addProduct = async (req, res) => {
       discount,
       isAvailable,
       reviews: [],
-      productCode
-      
+      productCode,
+      brand,
+      team,
+      isFeatured
     });
 
     await newProduct.save();
@@ -34,18 +42,27 @@ export const addProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, slug, description, price, category, sizes, images, discount, isAvailable ,productCode,reviews } = req.body;
+    const { name, slug, description, price, category, sizes, images, discount, isAvailable, productCode, reviews, brand, team, isFeatured } = req.body;
 
     const updatedProduct = await Product.findByIdAndUpdate(productId, {
-      name,
+      name: {
+        en: name.en,
+        ar: name.ar
+      },
       slug,
-      description,
+      description: {
+        en: description.en,
+        ar: description.ar
+      },
       price,
       category,
       sizes,
       images,
       discount,
-      isAvailable
+      isAvailable,
+      brand,
+      team,
+      isFeatured
     }, { new: true });
 
     if (!updatedProduct) {
@@ -75,7 +92,21 @@ export const deleteProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find({}, {
+      name: 1,
+      slug: 1,
+      price: 1,
+      category: 1,
+      sizes: 1,
+      images: 1,
+      discount: 1,
+      isAvailable: 1,
+      productCode: 1,
+      brand: 1,
+      team: 1,
+      isFeatured: 1
+    });
+
     return res.status(200).json({ products });
   } catch (error) {
     return res.status(500).json({ error: error.message });

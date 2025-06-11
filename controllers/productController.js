@@ -27,7 +27,7 @@ const getProducts = async (req, res) => {
     }
 
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
     query = query.skip(skip).limit(limit);
@@ -94,10 +94,107 @@ const getProductByCode = async (req, res) => {
   }
 };
 
+export const addProduct = async (req, res) => {
+  try {
+    const { name, slug, description, price, category, sizes, images, discount, isAvailable, productCode, reviews, brand, team, isFeatured } = req.body;
+
+    const newProduct = new Product({
+      name: {
+        en: name.en,
+        ar: name.ar
+      },
+      slug,
+      description: {
+        en: description.en,
+        ar: description.ar
+      },
+      price,
+      category,
+      sizes,
+      images,
+      discount,
+      isAvailable,
+      reviews: [],
+      productCode,
+      brand,
+      team,
+      isFeatured
+    });
+
+    await newProduct.save();
+    return res.status(201).json({ message: "Product added successfully!", product: newProduct });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProduct = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const { name, slug, description, price, category, sizes, images, discount, isAvailable, productCode, reviews, brand, team, isFeatured } = req.body;
+
+    const updatedProduct = await Product.findByIdAndUpdate(productId, {
+      name: {
+        en: name.en,
+        ar: name.ar
+      },
+      slug,
+      description: {
+        en: description.en,
+        ar: description.ar
+      },
+      price,
+      category,
+      sizes,
+      images,
+      discount,
+      isAvailable,
+      brand,
+      team,
+      isFeatured
+    }, { new: true });
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    return res.status(200).json({ message: "Product updated successfully!", product: updatedProduct });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+const getProductsByTeam = async (req, res) => {
+  try {
+    const products = await Product.find({ team: req.params.team });
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found for this team" });
+    }
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getProductsByBrand = async (req, res) => {
+  try {
+    const products = await Product.find({ brand: req.params.brand });
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found for this brand" });
+    }
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export {
   getProducts,
   getProductBySlug,
   getProductById,
   getProductsByCategory,
   getProductByCode,
+  getProductsByTeam,
+  getProductsByBrand
 };
